@@ -3,7 +3,7 @@
 
 
 //main processing
-BOOL ProcessFile(HANDLE hFile,PHANDLE phInputBuffer, PHANDLE phOutputBuffer,PHANDLE phNameBuffer, int midiChannel,TCHAR *fileName,TCHAR *outFileName);
+BOOL ProcessFile(HANDLE hFile, PHANDLE phInputBuffer, PHANDLE phOutputBuffer, PHANDLE phNameBuffer, int midiChannel, TCHAR *fileName);
 //format of data dump
 WORD GetDumpFormat(PUCHAR readBuffer);
 //initial validation checks
@@ -26,17 +26,17 @@ void LFOConvert(lpFM_BULK_NEW_PATCH lpNewPatch, lpFM_BULK_OLD_PATCH lpOldPatch);
 void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch, int PatchNo);
 //set the check byte
 void SetCheckSum(UCHAR *writeBuffer,BOOL display);
+//calculate the coarse, fine and detune frequencies for the DX9 new style operator
+void CalcFreqDetune(lpFM_BULK_OPERATOR_NEW lpOperatorNew, UCHAR *pCoarseOut, UCHAR *pFineOut, UCHAR *pDetuneOut);
 
-void PaddPatches(UCHAR *writeBuffer);
-
+//write out the buffers for the 2 files (sysex and text file of patch names)
 BOOL WriteDX9BulkFile(LPCWSTR fileName, UCHAR *outBuffer);
 BOOL WriteDX9PatchNames(LPCWSTR fileName, LPCSTR outBuffer);
 
+//convert bulk voices
+void ConvertBulkVoices(HANDLE hFile, UCHAR *readBuffer, UCHAR *writeBuffer,int midiChannel);
 
-//mainly for debug purposes
-void DisplayVoice(lpFM_BULK_OLD_PATCH lpOldPatch,int patchNo);
-
-
+//handle the patch names
 void getPatchName(char *outName, char *patchName);
 void getStrName(lpFM_BULK_NEW_PATCH lpNewPatch, char *dispName);
 

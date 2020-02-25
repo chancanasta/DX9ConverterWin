@@ -6,6 +6,7 @@
 #include "FMStructs.h"
 #include "FMConversion.h"
 #include "ProcessFile.h"
+#include "DXDisplay.h"
 #include <Shlwapi.h>
 #include <math.h> 
 #include <stdio.h>
@@ -13,31 +14,14 @@ OVERLAPPED ol = { 0 };
 TCHAR genOut[BUFSIZE];
 
 //main file processing funtiona
-BOOL ProcessFile(HANDLE hFile, PHANDLE phInputBuffer, PHANDLE phOutputBuffer, PHANDLE phNameBuffer,int midiChannel,TCHAR *fileName,TCHAR *outFileName)
+BOOL ProcessFile(HANDLE hFile, PHANDLE phInputBuffer, PHANDLE phOutputBuffer, PHANDLE phNameBuffer,int midiChannel,TCHAR *fileName)
 {
-	DWORD dwBytesRead = 0;
-	DWORD inBufferPos = 0;
-	DWORD outBufferPos = 0;
-	DWORD outNamePos = 0;
+	DWORD dwBytesRead = 0;	
+//buffers
 	UCHAR *readBuffer;
 	UCHAR *writeBuffer;		
-	TCHAR tOutName[BUFSIZE];
-	TCHAR tTxtName[BUFSIZE];
-	TCHAR tPath[BUFSIZE];
-	TCHAR tWork[BUFSIZE];
-	
-	char textBuffer[BUFSIZE];
-	char workBuffer[BUFSIZE];
-	char dispName[16];
-	DWORD dwRet;
-	int pass, xx, y;
-	
+					
 	WORD dumpFormat;
-	
-	FM_BULK_OLD_PATCH oldPatch;
-	lpFM_BULK_NEW_PATCH lpNewPatch;
-
-
 //try to read the file in	
 	if (!ReadFile(hFile, phInputBuffer, INPUTBUFFERSIZE, &dwBytesRead, &ol))
 	{
@@ -46,7 +30,6 @@ BOOL ProcessFile(HANDLE hFile, PHANDLE phInputBuffer, PHANDLE phOutputBuffer, PH
 		CloseHandle(hFile);
 		return FALSE;
 	}
-
 
 	readBuffer = (UCHAR *)phInputBuffer;
 	writeBuffer = (UCHAR *)phOutputBuffer;
@@ -68,202 +51,29 @@ BOOL ProcessFile(HANDLE hFile, PHANDLE phInputBuffer, PHANDLE phOutputBuffer, PH
 			break;
 		case BULK_VOICE:
 			ConsoleOut(L"Bulk voice data dump\r\n");
+			ConvertBulkVoices(hFile,readBuffer, writeBuffer,midiChannel);
 			break;
 		case OLD_SINGLE_VOICE:			
 			ConsoleOut(L"Original DX single voice dump (DX7/DX9)\r\n");
+			DisplaySingleVoice(readBuffer);
 			break;
 		case OLD_BULK_VOICE:
-			ConsoleOut(L"Origingal DX bulk voice dump (DX7/9)\r\n");
+			ConsoleOut(L"Origingal DX bulk voice dump (DX7/9)\r\nDisplaying settings\r\n");			
+			DisplayBulkVoices(readBuffer);
 			break;
 		default:
 			ConsoleOut(L"Invalid Voice Dump format\r\n");
-			//close the file
+//close the file
 			CloseHandle(hFile);
-			return false;
+			return FALSE;
 	}
 	
 	
-	if (dumpFormat == OLD_BULK_VOICE || dumpFormat == OLD_BULK_VOICE)
-	{		
-//'old' format file
-		inBufferPos = 6;
-//write out the header
-		lpFM_BULK_OLD_PATCH lpOldPatch;		
-		if (dumpFormat == OLD_BULK_VOICE)
-		{						
-//dump the voice data details 
-			for (int i = 0; i < 32; i++,inBufferPos+= FMDX9_PATCH_DATA_SIZE,outBufferPos+= FMDX9_PATCH_DATA_SIZE)
-			{
-				lpOldPatch = (lpFM_BULK_OLD_PATCH)&readBuffer[inBufferPos];
-				DisplayVoice(lpOldPatch,i);
-			}
-		}
-	}
-	else
-	{
-//go through the file twice, creating 2 DX9 files
-//32 patches -> 2x20 patches with 8 patches repeated
-		for (pass = 0; pass < 2; pass++)
-		{
-			dwRet = GetFinalPathNameByHandle(hFile, tWork, BUFSIZE, VOLUME_NAME_DOS);
-
-			//add the prefix
-			xx = (int)_tcslen(tWork);
-			for (y = xx; y > 0; y--)
-			{
-				if(tWork[y]=='.')
-					tWork[y]=0;
-				if (tWork[y] == '\\')
-					break;
-			}
-			_tcsncpy_s(tPath, tWork, y + 1);
-
-			if (outFileName == NULL)
-			{
-				swprintf(tOutName, BUFSIZE, TEXT("%sDX9_%s_%d.syx"), tPath, &tWork[y + 1], pass + 1);
-				swprintf(tTxtName, BUFSIZE, TEXT("%sDX9_%s_%d.txt"), tPath, &tWork[y + 1], pass + 1);
-			}
-			else
-			{
-//nameout put file
-				TCHAR work[BUFSIZE];
-				TCHAR work2[BUFSIZE];
-				wcscpy_s(work2, BUFSIZE, outFileName);
-//get the file extension
-				for (y = xx; y > 0; y--)
-				{
-					if (work2[y] == '.')
-					{
-						work2[y] = 0;
-						break;
-					}
-				}
-//save extension
-				if (y != 0)
-					_tcscpy_s(work, BUFSIZE, &work2[y + 1]);
-				else
-					_tcscpy_s(work, BUFSIZE, TEXT("syx"));
-//construct output file names
-				swprintf(tOutName, BUFSIZE, TEXT("%s_%d.%s"), work2, pass + 1,work);
-				swprintf(tTxtName, BUFSIZE, TEXT("%s_%d.txt"), work2, pass + 1);
-
-			}
-								
-			strcpy_s(textBuffer, BUFSIZE,"   Patch List\r\n================\r\n");
-			ConsoleOut(L"\r\n");
-			inBufferPos = 6+(FMDX9_SKIP_PATCH_SIZE * pass);
-			
-			//write out the header
-			memcpy(writeBuffer, FMDX9_BULKHEADER, 6);
-			outBufferPos = 6;
-			//set MIDI channel
-			writeBuffer[MIDI_CHANNEL_POS] = (midiChannel - 1);
-			//'new' (non-DX9) format, so convert
-			//loop through the patches in the file	
-			for (int i = 0; i < 20; i++, inBufferPos += 128, outBufferPos += 128)
-			{
-//save the patch name into our text buffer
-				lpNewPatch = (lpFM_BULK_NEW_PATCH)&readBuffer[inBufferPos];
-				getStrName(lpNewPatch,dispName);
-				sprintf_s(workBuffer,BUFSIZE,"%02d - %s\r\n", (i + 1), dispName);
-				strcat_s(textBuffer, BUFSIZE,workBuffer);
-				//convert the patch
-				ConvertVoice(lpNewPatch, i, &oldPatch);
-				//write the patch out
-				memcpy(&writeBuffer[outBufferPos], &oldPatch, sizeof(FM_BULK_OLD_PATCH));
-			}
-			//fill out the remainder of the file
-			memset(&writeBuffer[outBufferPos], DX9FILLER, (sizeof(FM_BULK_OLD_PATCH)*FILLERPATCHES));
-			//add the checksum
-			SetCheckSum(writeBuffer, FALSE);
-			//add EOF
-			writeBuffer[SYSEOF] = SYSEND;
-			//write out the file
-			
-			if (outFileName == NULL)
-			{
-				swprintf(tWork, BUFSIZE, TEXT("DX9_%s_%d.syx"), &tWork[y + 1],pass + 1);
-				ConsoleOut(L"Writing Files :\r\n\t");
-				ConsoleOut(tWork);
-				ConsoleOut(L"\r\n\t");				
-				swprintf(tWork, BUFSIZE, TEXT("DX9_%s_%d.txt"), &tWork[y + 1], pass + 1);				
-				ConsoleOut(tWork);
-				ConsoleOut(L"\r\n");				
-			}
-			else
-			{
-				ConsoleOut(L"Writing Files :\r\n\t");
-				ConsoleOut(tOutName);
-				ConsoleOut(L"\r\n\t");								
-				ConsoleOut(tTxtName);
-				ConsoleOut(L"\r\n");
-			}
-			
-			ConsoleOut(L"\r\n======================================================\r\n");
-			
-			WriteDX9BulkFile(tOutName, writeBuffer);
-			WriteDX9PatchNames(tTxtName, textBuffer);
-		}
-	}
 	
 	return TRUE;
 }
 
 
-//display some details of an old (DX9) voice
-void DisplayVoice(lpFM_BULK_OLD_PATCH lpOldPatch, int patchNo)
-{
-	char dispName[12];
-	dispName[10] = 0;
-	memcpy(dispName, lpOldPatch->PatchName, 10);
-	ConsoleOut(L"\r\n\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n");
-	swprintf(genOut, BUFSIZE, TEXT("[%02d] Name %S\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\nAlgo:%d , Trans:%d KeySync:%d FB:%d\r\n"),
-		patchNo + 1, dispName, lpOldPatch->Algorithm.Algorithm, lpOldPatch->Lfo.Transpose, (lpOldPatch->Algorithm.OscKeySyncFeedback >> 3) & 1, lpOldPatch->Algorithm.OscKeySyncFeedback & 7);
-	ConsoleOut(genOut);
-
-	for (int i = 0; i < 4; i++)
-	{
-		int op = 6 - i;
-		swprintf(genOut, BUFSIZE, TEXT("----------- OP %d --------------\r\n"), op);
-		ConsoleOut(genOut);
-		//operator ratio		
-		swprintf(genOut, BUFSIZE, TEXT("Coarse:%02d Fine:%02d Det:%02d AModSen:%d KSRate:%d KSLevel:%d OutLevel:%02d\r\n"),
-			(lpOldPatch->FMOp[i].FreqCMode >> 1), 
-			lpOldPatch->FMOp[i].FreqFine, 
-			(lpOldPatch->FMOp[i].OscDetuneRateScale >> 3) & 15, 
-			lpOldPatch->FMOp[i].KeyVelSensAModSens & 3, 
-			(lpOldPatch->FMOp[i].OscDetuneRateScale & 7),
-			lpOldPatch->FMOp[i].ScaleRightDepth, //Where the DX9 stores Keyboard scaling level
-			lpOldPatch->FMOp[i].OutputLevel);
-		ConsoleOut(genOut);
-
-
-
-		//envelope
-		swprintf(genOut, BUFSIZE, L"L1:%02d L2:%02d L3:%02d L4:%02d\r\n", lpOldPatch->FMOp[i].Level1, lpOldPatch->FMOp[i].Level2, lpOldPatch->FMOp[i].Level3, lpOldPatch->FMOp[i].Level4);
-		ConsoleOut(genOut);
-		swprintf(genOut, BUFSIZE, L"R1:%02d R2:%02d R3:%02d R4:%02d\r\n", lpOldPatch->FMOp[i].Rate1, lpOldPatch->FMOp[i].Rate2, lpOldPatch->FMOp[i].Rate3, lpOldPatch->FMOp[i].Rate4);
-		ConsoleOut(genOut);
-
-		ConsoleOut(TEXT("\r\n"));
-
-	}
-//LFO
-	swprintf(genOut,BUFSIZE,L"LFO Delay:%02d Speed:%02d PMD:%02d AMD:%02d PMS:%d Wave:%d",
-		lpOldPatch->Lfo.LFODelay,
-		lpOldPatch->Lfo.LFOSpeed,
-		lpOldPatch->Lfo.LFOPitchModDepth,
-		lpOldPatch->Lfo.LFOAmpModDepth,
-//breakdown LFOPModWaveSync
-//b6 5 4 - LFO Pitch Mod Sensitivity (0-7)
-//b3 2 1 - LFO Wave (0-5)
-//b0	 - Sync (0-1)
-		(lpOldPatch->Lfo.LFOPModWaveSync>>4)&7,
-		(lpOldPatch->Lfo.LFOPModWaveSync>>1)&7
-		);
-	ConsoleOut(genOut);
-//Keyboard scaling
-}
 
 
 //get the data dump format
@@ -383,12 +193,12 @@ Note that the operators oddly and helpfully go 4,2,3,1
 	}
 }
 
-//convert the frequency settings of the operator
-void FreqConvert(lpFM_BULK_OPERATOR_NEW lpOperatorNew, lpFM_BULK_OPERATOR_OLD lpOperatorOld)
+//calculate the coarse, fine and detune frequencies for the DX9 new style operator
+void CalcFreqDetune(lpFM_BULK_OPERATOR_NEW lpOperatorNew, UCHAR *pCoarseOut, UCHAR *pFineOut, UCHAR *pDetuneOut)
 {
 	UCHAR newFreq;
-	UCHAR coarse=0;
-	UCHAR fine=0;
+	UCHAR coarse = 0;
+	UCHAR fine = 0;
 	UCHAR work = 0;
 	UCHAR newDetune;
 	UCHAR oldDetune;
@@ -400,34 +210,34 @@ void FreqConvert(lpFM_BULK_OPERATOR_NEW lpOperatorNew, lpFM_BULK_OPERATOR_OLD lp
 	double fineWork;
 	double calcFreq;
 	int i;
-//get the frequency (0-63) from new 4 op
+	//get the frequency (0-63) from new 4 op
 	newFreq = lpOperatorNew->OSCFreq;
 
-//get a double that represents that ratio
+	//get a double that represents that ratio
 	newFreqVal = DX21FREQ[newFreq];
-//derive coarse and fine values
+	//derive coarse and fine values
 	i = 0;
-//find the nearest coarse freq that is less than or equal to the 4op freq
+	//find the nearest coarse freq that is less than or equal to the 4op freq
 	while (i<32 && DX9COARSEFREQ[i] <= newFreqVal)
 		i++;
 	if (i > 0)
 		i--;
 
-//the index now points to our coarse setting
+	//the index now points to our coarse setting
 	oldFreqVal = DX9COARSEFREQ[i];
 #ifdef _DX9_DEBUG
 	swprintf(genOut, BUFSIZE, TEXT("In freq (%d) %d (%f) -> %d (%f) "), lpOperatorNew->OSCFreq, newFreq, newFreqVal, i, oldFreqVal);
 	ConsoleOut(genOut);
 #endif
 	coarse = i;
-//given this coarse freq, get the fine steps
+	//given this coarse freq, get the fine steps
 	fineStep = oldFreqVal / 100.0F;
-//see if there is any fine needed i.e any difference between the DX9 coarse value and the newer 4op ratio value
+	//see if there is any fine needed i.e any difference between the DX9 coarse value and the newer 4op ratio value
 	freqFine = newFreqVal - oldFreqVal;
 	if (freqFine > 0.0)
-	{		
-//there is a difference, so work out what that is in the available DX9 fine steps		
-//work out the number of steps
+	{
+		//there is a difference, so work out what that is in the available DX9 fine steps		
+		//work out the number of steps
 		fineWork = freqFine / fineStep;
 		fine = (UCHAR)(int)fineWork;
 		calcFreq = oldFreqVal + (fineStep*(double)fine);
@@ -435,49 +245,63 @@ void FreqConvert(lpFM_BULK_OPERATOR_NEW lpOperatorNew, lpFM_BULK_OPERATOR_OLD lp
 		swprintf(genOut, BUFSIZE, TEXT("fine delta:%f , step %f, steps %d , calc %f"), freqFine, fineStep, fine, calcFreq);
 		ConsoleOut(genOut);
 #endif
-	}		
-//freq mode is always 0 (ratio)
-	lpOperatorOld->FreqCMode = 0;
-
-//set the coarse (0-31);
+	}
+	//set the coarse (0-31);
 	coarse &= 0x1f;
-	lpOperatorOld->FreqCMode |= (coarse << 1);	
-//then the fine (0-99)
-	lpOperatorOld->FreqFine = fine;
-//detune
-//DX9 Detune breaks the current fine step into 15 smaller steps, centered around 7
+	*pCoarseOut = coarse;
+	//then the fine (0-99)
+	*pFineOut = fine;
+	//detune
+	//DX9 Detune breaks the current fine step into 15 smaller steps, centered around 7
 	detuneStep = fineStep / 15.0F;
-//Later 4op detune does +/- 2 cents in 7 steps, centered around 3
-//interestingly 
-//The DX21 manual says it's 2 cents and the values are -7 to +7, though the bulk data format at least (VMEM) only allows for -3 to +3
-//DX100, 27,11 and tx81z all agree it's 2.6 cents -3 to +3
-//comething like:
-//    0       1        2     3     4     5       6
-//  -2.6    -1.73    -0.87   0    0.87  1.73    2.6
-//
-//we're doing a simple translation of the detune - just moving the centre to 7 rather than 3
-//
+	//Later 4op detune does +/- 2 cents in 7 steps, centered around 3
+	//interestingly 
+	//The DX21 manual says it's 2 cents and the values are -7 to +7, though the bulk data format at least (VMEM) only allows for -3 to +3
+	//DX100, 27,11 and tx81z all agree it's 2.6 cents -3 to +3
+	//comething like:
+	//    0       1        2     3     4     5       6
+	//  -2.6    -1.73    -0.87   0    0.87  1.73    2.6
+	//
+	//we're doing a simple translation of the detune - just moving the centre to 7 rather than 3
+	//
 	newDetune = lpOperatorNew->RateScalingDetune & 7;
-/* 
-Here's some maths to translate the cents into ratios - a WIP so sticking with the simple 'recentre' approach for now
+	/*
+	Here's some maths to translate the cents into ratios - a WIP so sticking with the simple 'recentre' approach for now
 	maxCents = 2.6F;
 	centStep = maxCents / 3.0f;
 	centWork = ((float)(newDetune-3.0f))*centStep;
-//form.ratioout.value = Math.round(1000000 * Math.pow(2, (centin / 100 / 12))) / 1000000;
-	
-	centRatio = ((1000000.0f * pow(2, (centWork/100.0f/12.0f))) / 1000000.0f)-1.0f;	
-		
+	//form.ratioout.value = Math.round(1000000 * Math.pow(2, (centin / 100 / 12))) / 1000000;
+
+	centRatio = ((1000000.0f * pow(2, (centWork/100.0f/12.0f))) / 1000000.0f)-1.0f;
+
 	oldDetune = (UCHAR)(centRatio / detuneStep);
 	printf("\n in det %d cent %f , rat %f, detStep %f, oDet %d", newDetune,centWork, centRatio,detuneStep,oldDetune);
-*/
+	*/
 	oldDetune = DETUNECONVERT[newDetune];
 #ifdef _DX9_DEBUG
 	swprintf(genOut, BUFSIZE, TEXT(" Det in:%d out%d \r\n"), newDetune, oldDetune);
 	ConsoleOut(genOut);
 #endif	
-	lpOperatorOld->OscDetuneRateScale = oldDetune<<3;	
+	*pDetuneOut = oldDetune;	
 	return;
 }
+
+//convert the frequency settings of the operator
+void FreqConvert(lpFM_BULK_OPERATOR_NEW lpOperatorNew, lpFM_BULK_OPERATOR_OLD lpOperatorOld)
+{
+	UCHAR coarse;
+	UCHAR fine;
+	UCHAR detune;
+//calculate/convert the coarse, fine and detune settings for this 'new style' operator
+	CalcFreqDetune(lpOperatorNew, &coarse, &fine, &detune);	
+	
+//then set those into the DX9 operator
+	lpOperatorOld->FreqCMode = (coarse << 1);
+	lpOperatorOld->FreqFine = fine;
+	lpOperatorOld->OscDetuneRateScale = detune << 3;	
+	return;
+}
+
 
 //convert from 'new' Envelopes to old ones
 void EGConvert(lpFM_BULK_OPERATOR_NEW lpOperatorNew, lpFM_BULK_OPERATOR_OLD lpOperatorOld)
@@ -699,6 +523,12 @@ BOOL WriteDX9PatchNames(LPCWSTR fileName, LPCSTR outBuffer)
 	HANDLE hFile;
 	DWORD bytesWritten;
 	BOOL retValue = TRUE;
+	
+	int fPos = 0;
+	int xx = (int)_tcslen(fileName);
+	for (fPos = xx; fPos > 0; fPos--)
+		if (fileName[fPos] == '\\')
+			break;
 
 	hFile = CreateFile(fileName,                // name of the write
 		GENERIC_WRITE,          // open for writing
@@ -714,6 +544,7 @@ BOOL WriteDX9PatchNames(LPCWSTR fileName, LPCSTR outBuffer)
 		ConsoleOut(genOut);
 		return FALSE;
 	}
+
 
 	if (!WriteFile(hFile, outBuffer, (DWORD)strlen((char *)outBuffer), &bytesWritten, NULL))
 	{
@@ -756,3 +587,98 @@ void getStrName(lpFM_BULK_NEW_PATCH lpNewPatch,char *dispName)
 }
 	
 
+//convert bulk data dump
+void ConvertBulkVoices(HANDLE hFile,UCHAR *readBuffer,UCHAR *writeBuffer, int midiChannel)
+{
+	TCHAR tWork[BUFSIZE];
+	TCHAR tPath[BUFSIZE];
+	TCHAR tTxtFile[BUFSIZE];
+	TCHAR tTxtName[BUFSIZE];
+	TCHAR tOutName[BUFSIZE];
+	
+	char textBuffer[BUFSIZE];
+	char workBuffer[BUFSIZE];
+	char dispName[16];
+
+	DWORD inBufferPos = 0;
+	DWORD outBufferPos = 0;
+	int pass, xx, y, byteLen;
+	DWORD dwRet;
+
+	lpFM_BULK_NEW_PATCH lpNewPatch;
+	FM_BULK_OLD_PATCH oldPatch;
+
+//32 voice bulk dump in 'new' 4op format (DX21/27/100/11)
+//go through the file twice, creating 2 DX9 files
+//32 patches -> 2x20 patches with 8 patches repeated
+	for (pass = 0; pass < 2; pass++)
+	{
+		dwRet = GetFinalPathNameByHandle(hFile, tWork, BUFSIZE, VOLUME_NAME_DOS);
+
+		//add the prefix
+		xx = (int)_tcslen(tWork);
+		for (y = xx; y > 0; y--)
+		{
+			if (tWork[y] == '.')
+				tWork[y] = 0;
+			if (tWork[y] == '\\')
+				break;
+		}
+		_tcsncpy_s(tPath, tWork, y + 1);
+
+		swprintf(tTxtFile, BUFSIZE, TEXT("DX9_%s_%d"), &tWork[y + 1], pass + 1);
+		swprintf(tOutName, BUFSIZE, TEXT("%s%s.syx"), tPath, tTxtFile);
+		swprintf(tTxtName, BUFSIZE, TEXT("%s%s.txt"), tPath, tTxtFile);
+//create UTF-8 version of name for text file		
+		byteLen = WideCharToMultiByte(CP_UTF8, 0, tTxtFile, (int)_tcslen(tTxtFile), workBuffer, BUFSIZE, NULL, NULL);
+		textBuffer[0] = 0;
+		if (byteLen)
+		{
+			workBuffer[byteLen] = 0;
+			sprintf_s(textBuffer, BUFSIZE, "-------------\r\n  Sysex File : %s.syx\r\n  Patch File : %s.txt\r\n-------------\r\n", workBuffer, workBuffer);
+		}
+
+//text buffer containing patch list
+		strcat_s(textBuffer, BUFSIZE, "\r\n     Patches\r\n=================\r\n");
+
+		ConsoleOut(L"\r\n");
+		inBufferPos = 6 + (FMDX9_SKIP_PATCH_SIZE * pass);
+
+//write out the header
+		memcpy(writeBuffer, FMDX9_BULKHEADER, 6);
+		outBufferPos = 6;
+//set MIDI channel
+		writeBuffer[MIDI_CHANNEL_POS] = (midiChannel - 1);
+//'new' (non-DX9) format, so convert
+//loop through the patches in the file	
+		for (int i = 0; i < 20; i++, inBufferPos += 128, outBufferPos += 128)
+		{
+//save the patch name into our text buffer
+			lpNewPatch = (lpFM_BULK_NEW_PATCH)&readBuffer[inBufferPos];
+			getStrName(lpNewPatch, dispName);
+			sprintf_s(workBuffer, BUFSIZE, "%02d - %s\r\n", (i + 1), dispName);
+			strcat_s(textBuffer, BUFSIZE, workBuffer);
+			//convert the patch
+			ConvertVoice(lpNewPatch, i, &oldPatch);
+			//write the patch out
+			memcpy(&writeBuffer[outBufferPos], &oldPatch, sizeof(FM_BULK_OLD_PATCH));
+		}
+		//fill out the remainder of the file
+		memset(&writeBuffer[outBufferPos], DX9FILLER, (sizeof(FM_BULK_OLD_PATCH)*FILLERPATCHES));
+		//add the checksum
+		SetCheckSum(writeBuffer, FALSE);
+		//add EOF
+		writeBuffer[SYSEOF] = SYSEND;
+		//write out the file
+		swprintf(tWork, BUFSIZE, TEXT("DX9_%s_%d.syx"), &tWork[y + 1], pass + 1);
+		ConsoleOut(L"Writing Files :\r\n\t");
+		ConsoleOut(tWork);
+		ConsoleOut(L"\r\n\t");
+		swprintf(tWork, BUFSIZE, TEXT("DX9_%s_%d.txt"), &tWork[y + 1], pass + 1);
+		ConsoleOut(tWork);
+		ConsoleOut(L"\r\n");
+		ConsoleOut(L"\r\n======================================================\r\n");
+		WriteDX9BulkFile(tOutName, writeBuffer);
+		WriteDX9PatchNames(tTxtName, textBuffer);
+	}
+}

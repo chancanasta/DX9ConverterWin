@@ -162,10 +162,10 @@ struct FM_BULK_OPERATOR_OLD
 	UCHAR Level3;	//(0-99)
 	UCHAR Level4;	//(0-99)
 	UCHAR BreakPoint;	//level scaling break point (0-99)
-	UCHAR ScaleLeftDepth;	//Scale left depth (0-99)
+	UCHAR ScaleLeftDepth;	//Scale left depth (0-99) (not used by DX9)
 	UCHAR ScaleRightDepth;	//Scale Right depth (0-99)
 //----
-	UCHAR ScaleLRCurve;		
+	UCHAR ScaleLRCurve;		//(not used by DX9)
 //breakdown
 //b3 2 - Scale Right Curve (0-3)
 //b1 0 - Scale Left Curve (0-3)
@@ -187,7 +187,7 @@ struct FM_BULK_OPERATOR_OLD
 	UCHAR FreqCMode;
 //breakdown
 //b5 4 3 2 1 - Frequency Coarse (0-31)
-//b0 - Fixed Mode (0-1)
+//b0 - Fixed Mode (0-1) (always 0 [ratio mode] on DX9)
 //----
 	UCHAR FreqFine; //Frequency fine (0-99)
 	
@@ -209,7 +209,7 @@ byte             bit #
 109               PL4              PITCH EG L4   0 - 99
 */
 //pitch envelope (old 4op, bank/bulk)
-struct FM_BULK_PITCH_ENVELOPE_OLD
+struct FM_PITCH_ENVELOPE_OLD
 {
 	UCHAR Rate1;	//(0-99)
 	UCHAR Rate2;	//(0-99)
@@ -284,7 +284,7 @@ struct FM_BULK_LFO_OLD
 struct FM_BULK_OLD_PATCH
 {
 	FM_BULK_OPERATOR_OLD FMOp[6];
-	FM_BULK_PITCH_ENVELOPE_OLD PitchEnvelope;
+	FM_PITCH_ENVELOPE_OLD PitchEnvelope;
 	FM_BULK_ALGORITHM_OLD Algorithm;
 	FM_BULK_LFO_OLD Lfo;
 	UCHAR PatchName[10];	
@@ -292,6 +292,155 @@ struct FM_BULK_OLD_PATCH
 
 //pointer to same
 typedef FM_BULK_OLD_PATCH *lpFM_BULK_OLD_PATCH;
+
+//'old' single voice structures
+
+/*
+11110000  F0   Status byte - start sysex
+0iiiiiii  43   ID # (i=67; Yamaha)
+0sssnnnn  00   Sub-status (s=0) & channel number (n=0; ch 1)
+0fffffff  00   format number (f=0; 1 voice)
+0bbbbbbb  01   byte count MS byte
+0bbbbbbb  1B   byte count LS byte (b=155; 1 voice)
+0ddddddd  **   data byte 1
+
+|       |       |
+
+0ddddddd  **   data byte 155
+0eeeeeee  **   checksum (masked 2's complement of sum of 155 bytes)
+11110111  F7   Status - end sysex
+
+-------------
+
+Data Structure: Single Voice Dump & Parameter #'s (single voice format, g=0)
+-------------------------------------------------------------------------
+
+Parameter
+Number    Parameter                  Value Range
+---------  ---------                  -----------
+0        OP6 EG rate 1              0-99
+1         "  "  rate 2               "
+2         "  "  rate 3               "
+3         "  "  rate 4               "
+4         "  " level 1               "
+5         "  " level 2               "
+6         "  " level 3               "
+7         "  " level 4               "
+8        OP6 KBD LEV SCL BRK PT      "        C3= $27
+9         "   "   "   "  LFT DEPTH   "
+10         "   "   "   "  RHT DEPTH   "
+11         "   "   "   "  LFT CURVE  0-3       0=-LIN, -EXP, +EXP, +LIN
+12         "   "   "   "  RHT CURVE   "            "    "    "    "
+13        OP6 KBD RATE SCALING       0-7
+14        OP6 AMP MOD SENSITIVITY    0-3
+15        OP6 KEY VEL SENSITIVITY    0-7
+16        OP6 OPERATOR OUTPUT LEVEL  0-99
+17        OP6 OSC MODE (fixed/ratio) 0-1        0=ratio
+18        OP6 OSC FREQ COARSE        0-31
+19        OP6 OSC FREQ FINE          0-99
+20        OP6 OSC	DETUNE             0-14       0: det=-7
+21 \
+|  > repeat above for OSC 5, OSC 4,  ... OSC 1
+125 /
+126        PITCH EG RATE 1            0-99
+127          "    " RATE 2              "
+128          "    " RATE 3              "
+129          "    " RATE 4              "
+130          "    " LEVEL 1             "
+131          "    " LEVEL 2             "
+132          "    " LEVEL 3             "
+133          "    " LEVEL 4             "
+134        ALGORITHM #                 0-31
+135        FEEDBACK                    0-7
+136        OSCILLATOR SYNC             0-1
+137        LFO SPEED                   0-99
+138         "  DELAY                    "
+139         "  PITCH MOD DEPTH          "
+140         "  AMP   MOD DEPTH          "
+141        LFO SYNC                    0-1
+142         "  WAVEFORM                0-5, (data sheet claims 9-4 ?!?) 0:TR, 1:SD, 2:SU, 3:SQ, 4:SI, 5:SH
+143        PITCH MOD SENSITIVITY       0-7
+144        TRANSPOSE                   0-48   12 = C2
+145        VOICE NAME CHAR 1           ASCII
+146        VOICE NAME CHAR 2           ASCII
+147        VOICE NAME CHAR 3           ASCII
+148        VOICE NAME CHAR 4           ASCII
+149        VOICE NAME CHAR 5           ASCII
+150        VOICE NAME CHAR 6           ASCII
+151        VOICE NAME CHAR 7           ASCII
+152        VOICE NAME CHAR 8           ASCII
+153        VOICE NAME CHAR 9           ASCII
+154        VOICE NAME CHAR 10          ASCII
+155        OPERATOR ON/OFF
+bit6 = 0 / bit 5: OP1 / ... / bit 0: OP6
+
+Note that there are actually 156 parameters listed here, one more than in
+a single voice dump. The OPERATOR ON/OFF parameter is not stored with the
+voice, and is only transmitted or received while editing a voice. So it
+only shows up in parameter change SYS-EX's.
+*/
+
+//single voices a bit more straightfowarded with no 'bit packed' data
+struct FM_SINGLE_OPERATOR_OLD
+{
+	UCHAR Rate1;	//(0-99)
+	UCHAR Rate2;	//(0-99)
+	UCHAR Rate3;	//(0-99)
+	UCHAR Rate4;	//(0-99)
+	UCHAR Level1;	//(0-99)
+	UCHAR Level2;	//(0-99)
+	UCHAR Level3;	//(0-99)
+	UCHAR Level4;	//(0-99)
+	UCHAR BreakPoint;	//break point (0-99)	(not used by DX9)
+	UCHAR ScaleLeftDepth;	//Scale left depth (0-99) (not used by DX9)
+	UCHAR ScaleRightDepth;	//Scale Right depth (0-99)						
+	UCHAR ScaleLeftCurve;	// 0-3       0=-LIN, -EXP, +EXP, +LIN (not used by DX9)
+	UCHAR ScaleRightCurve;	// 0-3       0=-LIN, -EXP, +EXP, +LIN (not used by DX9)
+	UCHAR KeyRateScaling;	//0-7
+	UCHAR AmpModSens;		//0-3
+	UCHAR KeyVelSens;		//0-7 (not used by DX9) 
+	UCHAR OutputLevel;		//output level (0-99)
+	UCHAR OscMode;			//fixed(0) or ratio(1) - (always ratio for DX9)
+	UCHAR FreqCoarse;		//coarse freq (0-31)
+	UCHAR FreqFine;			//fine frequency (0-99)
+	UCHAR OscDetune;		//0-14
+};
+
+typedef FM_BULK_OPERATOR_OLD *lpFM_BULK_OPERATOR_OLD;
+
+
+struct FM_SINGLE_OLD_ALGORITHM
+{
+	UCHAR Algorithm;	//0-31
+	UCHAR Feedback;		//0-7
+	UCHAR OscSync;		//0-1
+};
+typedef FM_SINGLE_OLD_ALGORITHM *lpFM_SINGLE_OLD_ALGORITHM;
+
+
+struct FM_SINGLE_LFO_OLD
+{
+	UCHAR LFOSpeed;	//(0-99)
+	UCHAR LFODelay;	//(0-99)
+	UCHAR LFOPitchModDepth;	//(0-99)
+	UCHAR LFOAmpModDepth;	//(0-99)
+	UCHAR LFOSync;	//(0-1) (not used by DX9)
+	UCHAR WaveForm;	//0-5
+	UCHAR PitchModSens;	//0-7
+	UCHAR Transpose;	//0-48
+};
+
+struct FM_SINGLE_OLD_PATCH
+{
+	FM_SINGLE_OPERATOR_OLD FMOp[6];
+	FM_PITCH_ENVELOPE_OLD PitchEnvelope;
+	FM_SINGLE_OLD_ALGORITHM Alogrithm;
+	FM_SINGLE_LFO_OLD Lfo;
+	UCHAR PatchName[10];
+};
+
+typedef FM_SINGLE_OLD_PATCH *lpFM_SINGLE_OLD_PATCH;
+
 
 /*
 DX9 Dump:

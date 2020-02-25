@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="DX9Converter.h" />
     <ClInclude Include="DX9ConverterWin.h" />
+    <ClInclude Include="DXDisplay.h" />
     <ClInclude Include="FileConstants.h" />
     <ClInclude Include="FMConversion.h" />
     <ClInclude Include="FMStructs.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="DX9Converter.cpp" />
     <ClCompile Include="DX9ConverterWin.cpp" />
     <ClCompile Include="ProcessFile.cpp" />
+    <ClCompile Include="DXDisplay.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
