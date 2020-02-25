@@ -29,12 +29,16 @@ void SetCheckSum(UCHAR *writeBuffer,BOOL display);
 //calculate the coarse, fine and detune frequencies for the DX9 new style operator
 void CalcFreqDetune(lpFM_BULK_OPERATOR_NEW lpOperatorNew, UCHAR *pCoarseOut, UCHAR *pFineOut, UCHAR *pDetuneOut);
 
+//Single voice dump
+void SetSingleDefaults(lpFM_SINGLE_OLD_PATCH lpOldPatch);
+
 //write out the buffers for the 2 files (sysex and text file of patch names)
 BOOL WriteDX9BulkFile(LPCWSTR fileName, UCHAR *outBuffer);
 BOOL WriteDX9PatchNames(LPCWSTR fileName, LPCSTR outBuffer);
 
 //convert bulk voices
 void ConvertBulkVoices(HANDLE hFile, UCHAR *readBuffer, UCHAR *writeBuffer,int midiChannel);
+void ConvertSingleVoice(HANDLE hFile, UCHAR *readBuffer, UCHAR *writeBuffer, int midiChannel);
 
 //handle the patch names
 void getPatchName(char *outName, char *patchName);

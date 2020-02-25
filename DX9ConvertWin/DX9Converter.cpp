@@ -57,7 +57,7 @@ int DX9Convert(TCHAR *inFile,HWND hWnd)
 	}
 
 	MidiChannel = 1;
-	ProcessFile(hFile, phInputBuffer, phOutputBuffer, phNameBuffer, MidiChannel, inFile, lpOutFile);
+	ProcessFile(hFile, phInputBuffer, phOutputBuffer, phNameBuffer, MidiChannel, inFile);
 	//close the input file
 	CloseHandle(hFile);
 	
