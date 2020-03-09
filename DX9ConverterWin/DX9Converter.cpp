@@ -1,4 +1,4 @@
-// DX9Converter.cpp : Defines the entry point for the console application.
+// DX9Converter.cpp : From the original console version
 //
 
 #include "stdafx.h"

@@ -16,6 +16,9 @@
 //DX9/7
 #define OLD_SINGLE_VOICE	2
 #define	OLD_BULK_VOICE		3
+//2gen (DX11 / TX81Z)
+#define	ADDITIONAL_VOICE	4
+
 #define FORMAT_ERROR	9
 
 
