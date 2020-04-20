@@ -1,4 +1,4 @@
-// DX9Converter.cpp : Defines the entry point for the console application.
+// DX9Converter.cpp : From the original console version
 //
 
 #include "stdafx.h"
@@ -58,7 +58,7 @@ int DX9Convert(TCHAR *inFile,HWND hWnd)
 
 	MidiChannel = 1;
 	ProcessFile(hFile, phInputBuffer, phOutputBuffer, phNameBuffer, MidiChannel, inFile);
-	//close the input file
+//close the input file
 	CloseHandle(hFile);
 	
 //free the buffers

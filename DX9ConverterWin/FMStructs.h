@@ -8,19 +8,28 @@
 #define FMDX9_ALL_PATCH_SIZE	20*FMDX9_PATCH_DATA_SIZE
 #define FMDX9_SKIP_PATCH_SIZE	12*FMDX9_PATCH_DATA_SIZE
 
-static UCHAR FMDX9_BULKHEADER[6] = { 0xf0,0x43,0x00,0x09,0x020,00 };
-static UCHAR FMDX9_BULKFOOTER = 0xF7;     
+static UCHAR FMDX9_BULK_HEADER[6] =		{ 0xf0,0x43,0x00,0x09,0x20,0x00 };
+static UCHAR FMDX9_SINGLE_HEADER[6] =	{ 0xf0,0x43,0x00,0x00,0x01,0x1b };
+
+static UCHAR FM_SINGLE_ADD_HEADER[10] = { 0x4C,0x4D,0x20,0x20,0x38,0x39,0x37,0x36,0x41,0x45 };
 
 #define MIDI_CHANNEL_POS	2
+
+struct FM_EG_NEW
+{
+	UCHAR AttackRate;		//(0-31)
+	UCHAR DecayRate1;		//(0-31)
+	UCHAR DecayRate2;		//(0-31)
+	UCHAR ReleaseRate;		//(0-15)
+	UCHAR Decay1Level;		//(0-15)
+};
+
+typedef FM_EG_NEW *lpFM_EG_NEW;
 
 //operator structure (new 4op, bank/bulk)
 struct FM_BULK_OPERATOR_NEW
 {
-	UCHAR AttackRate;	//(0-31)
-	UCHAR DecayRate1;	//(0-31)
-	UCHAR DecayRate2;	//(0-31)
-	UCHAR ReleaseRate;	//(0-15)
-	UCHAR Decay1Level;	//(0-15)
+	FM_EG_NEW EG;
 	UCHAR LevelScaling;	//(0-99)
 //----
 	UCHAR AmeEGBiasVel;
@@ -38,14 +47,23 @@ struct FM_BULK_OPERATOR_NEW
 //b2 1 0 - Detune (0-6, centre is 3)
 
 };
-
-struct FM_DX9_CARRIERS
-{
-	UCHAR Operators[4];
-};
-
-
 typedef FM_BULK_OPERATOR_NEW *lpFM_BULK_OPERATOR_NEW;
+
+
+struct FM_SINGLE_OPERATOR_NEW
+{
+	FM_EG_NEW	EG;
+	UCHAR KeyScalingLevel;	//(0-99)
+	UCHAR KeyScalingRate;	//(0-3)
+	UCHAR EGBiasSens;		//(0-7)
+	UCHAR AmpModEnable;		//(0-1)
+	UCHAR KeyVel;			//(0-7)
+	UCHAR OutputLevel;		//(0-99)
+	UCHAR OSCFreq;			//(0-63)
+	UCHAR Detune;			//(0-6)
+};
+typedef FM_SINGLE_OPERATOR_NEW *lpFM_SINGLE_OPERATOR_NEW;
+
 
 //Algo / LFO structure (new 4op, bank/bulk)
 struct FM_BULK_LFO_NEW
@@ -59,6 +77,43 @@ struct FM_BULK_LFO_NEW
 //----
 	UCHAR LFOSpeed;
 	UCHAR LFODelay;
+};
+
+struct FM_SINGLE_ALGORITHM_NEW
+{
+	UCHAR Algorithm;
+	UCHAR Feedback;
+};
+
+struct FM_SINGLE_LFO_NEW
+{
+	UCHAR LFOSpeed;		//0-99
+	UCHAR LFODelay;		//0-99
+	UCHAR PModDepth;	//0-99;
+	UCHAR AModDepth;	//0-99
+	UCHAR LFOSync;		//0-1
+	UCHAR LFOWave;		//0-3
+	UCHAR PModSens;		//0-7
+	UCHAR AModSens;		//0-3
+	UCHAR Transpose;	//0-48
+};
+
+struct FM_SINGLE_PERFORMANCE_NEW
+{
+	UCHAR PolyMono;		//0-1
+	UCHAR PBendRange;	//0-12
+	UCHAR PortMode;		//0-1
+	UCHAR PortTIme;		//0-99
+	UCHAR FCVolume;		//0-99
+	UCHAR Sustain;		//0-1
+	UCHAR Portamento;	//0-1
+	UCHAR Chorus;		//0-1
+	UCHAR ModWheelP;	//0-99
+	UCHAR ModWheelA;	//0-99
+	UCHAR BrCtrlP;		//0-99
+	UCHAR BrCtrlA;		//0-99
+	UCHAR BrCtrlPBias;	//0-99
+	UCHAR BrCtrlEGBias;	//0-99
 };
 
 //Performance parameters (new 4op, bank/bulk)
@@ -101,7 +156,7 @@ struct FM_BULK_NAME_NEW
 };
 
 //pitch envelope (new 4op, bank/bulk)
-struct FM_BULK_PITCH_ENVELOPE_NEW
+struct FM_PITCH_ENVELOPE_NEW
 {
 	UCHAR Rate1;
 	UCHAR Rate2;
@@ -111,6 +166,37 @@ struct FM_BULK_PITCH_ENVELOPE_NEW
 	UCHAR Level3;
 };
 
+//Single voice dump
+struct FM_SINGLE_NEW_PATCH
+{
+	FM_SINGLE_OPERATOR_NEW FMOp[4];
+	FM_SINGLE_ALGORITHM_NEW Algorithm;
+	FM_SINGLE_LFO_NEW LFOParams;
+	FM_SINGLE_PERFORMANCE_NEW PerfParameters;
+	UCHAR PatchName[10];
+	FM_PITCH_ENVELOPE_NEW PtichEnvelope;	
+};
+typedef FM_SINGLE_NEW_PATCH *lpFM_SINGLE_NEW_PATCH;
+
+
+struct FM_BULK_ADD_OPERATOR
+{
+//----
+	UCHAR EgOffFixFixRng;
+//breakdown
+//b5 b4    - EG Offset (0-3)
+//b3       - Fixed mode (0-1)
+//b2 b1 b0 - Fixed Range (0-7)
+//----
+//----
+	UCHAR WaveFine;
+//breakdown
+//b6 b5 b4	  - Wave (0-7)
+//b3 b2 b1 b0 - Fine Value (0-15)
+//----
+};
+
+typedef FM_BULK_ADD_OPERATOR *lpFM_BULK_ADD_OPERATOR;
 
 //complete (new) 4op patch structure  (bank/bulk)
 struct FM_BULK_NEW_PATCH
@@ -119,8 +205,15 @@ struct FM_BULK_NEW_PATCH
 	FM_BULK_LFO_NEW LFOParams;
 	FM_BULK_PERFORMANCE_NEW PerfParameters;
 	UCHAR PatchName[10];
-	FM_BULK_PITCH_ENVELOPE_NEW PitchEnvelope;
-	UCHAR Padding[55];
+	FM_PITCH_ENVELOPE_NEW PitchEnvelope;
+//for DX21/27/100 the rest of the 128 bytes are padded out with zeros (55 bytes)
+//DX11/TX81z has an additional 11 bytes voice data
+	FM_BULK_ADD_OPERATOR AddOp[4];
+	UCHAR Reverb;	//(0-7)
+	UCHAR FCPitch;	//Foot controller pitch (0-99)
+	UCHAR FCAmp;	//Foot controller amplitude (0-99)	
+//which leaves 44 bytes to pad out
+	UCHAR Padding[44];
 };
 //pointer to same
 typedef FM_BULK_NEW_PATCH *lpFM_BULK_NEW_PATCH;
@@ -151,7 +244,7 @@ byte             bit #
  - repeats for all remaining 5 operators
 */
 
-struct FM_BULK_OPERATOR_OLD
+struct FM_EG_OLD
 {
 	UCHAR Rate1;	//(0-99)
 	UCHAR Rate2;	//(0-99)
@@ -161,6 +254,13 @@ struct FM_BULK_OPERATOR_OLD
 	UCHAR Level2;	//(0-99)
 	UCHAR Level3;	//(0-99)
 	UCHAR Level4;	//(0-99)
+};
+
+typedef FM_EG_OLD	*lpFM_EG_OLD;
+
+struct FM_BULK_OPERATOR_OLD
+{
+	FM_EG_OLD EG;
 	UCHAR BreakPoint;	//level scaling break point (0-99)
 	UCHAR ScaleLeftDepth;	//Scale left depth (0-99) (not used by DX9)
 	UCHAR ScaleRightDepth;	//Scale Right depth (0-99)
@@ -380,17 +480,11 @@ voice, and is only transmitted or received while editing a voice. So it
 only shows up in parameter change SYS-EX's.
 */
 
+
 //single voices a bit more straightfowarded with no 'bit packed' data
 struct FM_SINGLE_OPERATOR_OLD
 {
-	UCHAR Rate1;	//(0-99)
-	UCHAR Rate2;	//(0-99)
-	UCHAR Rate3;	//(0-99)
-	UCHAR Rate4;	//(0-99)
-	UCHAR Level1;	//(0-99)
-	UCHAR Level2;	//(0-99)
-	UCHAR Level3;	//(0-99)
-	UCHAR Level4;	//(0-99)
+	FM_EG_OLD	EG;
 	UCHAR BreakPoint;	//break point (0-99)	(not used by DX9)
 	UCHAR ScaleLeftDepth;	//Scale left depth (0-99) (not used by DX9)
 	UCHAR ScaleRightDepth;	//Scale Right depth (0-99)						
@@ -406,7 +500,7 @@ struct FM_SINGLE_OPERATOR_OLD
 	UCHAR OscDetune;		//0-14
 };
 
-typedef FM_BULK_OPERATOR_OLD *lpFM_BULK_OPERATOR_OLD;
+typedef FM_SINGLE_OPERATOR_OLD *lpFM_SINGLE_OPERATOR_OLD;
 
 
 struct FM_SINGLE_OLD_ALGORITHM
@@ -441,6 +535,11 @@ struct FM_SINGLE_OLD_PATCH
 
 typedef FM_SINGLE_OLD_PATCH *lpFM_SINGLE_OLD_PATCH;
 
+//structure to indicate carriers for the DX9 algorithms
+struct FM_DX9_CARRIERS
+{
+	UCHAR Operators[4];
+};
 
 /*
 DX9 Dump:
@@ -469,5 +568,34 @@ LFODelay
 20
 01 20 20 18 44 58 39 2e 20 31 20 20 20 20
 */
+
+//for 2gen (DX11 / TX81Z)
+struct FM_SINGLE_ADD_OP
+{
+	//Fixed frequency - not much we can do with these on a DX9	
+	UCHAR FixedFreq;		//0-1
+	UCHAR FixedFreqRange;	//0-7
+							//Freq range fine - we can use this
+	UCHAR FreqRangeFine;	//0-15
+							//waveform - again not much the DX9 can do with this 
+	UCHAR Waveform;			//0-7
+							//EG Shift (96dB, 48dB, 24dB, 12dB)
+							//            0     1     2     3
+	UCHAR EGShift;
+};
+
+typedef FM_SINGLE_ADD_OP *lpFM_SINGLE_ADD_OP;
+
+struct FM_SINGLE_ADD_PARAMS
+{
+	FM_SINGLE_ADD_OP FMOp[4];
+	UCHAR ReverbRate;
+	UCHAR FCPitch;	//Foot controller pitch
+	UCHAR FCAmp;	//Foot controller amplitude
+};
+
+typedef FM_SINGLE_ADD_PARAMS *lpFM_SINGLE_ADD_PARAMS;
+
+
 #endif
 

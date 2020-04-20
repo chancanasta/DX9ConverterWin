@@ -49,9 +49,9 @@ void DisplayVoice(lpFM_BULK_OLD_PATCH lpOldPatch, int patchNo)
 		ConsoleOut(tWork);
 
 		//envelope
-		swprintf(tWork, BUFSIZE, L"L1:%02d L2:%02d L3:%02d L4:%02d\r\n", lpOldPatch->FMOp[i].Level1, lpOldPatch->FMOp[i].Level2, lpOldPatch->FMOp[i].Level3, lpOldPatch->FMOp[i].Level4);
+		swprintf(tWork, BUFSIZE, L"L1:%02d L2:%02d L3:%02d L4:%02d\r\n", lpOldPatch->FMOp[i].EG.Level1, lpOldPatch->FMOp[i].EG.Level2, lpOldPatch->FMOp[i].EG.Level3, lpOldPatch->FMOp[i].EG.Level4);
 		ConsoleOut(tWork);
-		swprintf(tWork, BUFSIZE, L"R1:%02d R2:%02d R3:%02d R4:%02d\r\n", lpOldPatch->FMOp[i].Rate1, lpOldPatch->FMOp[i].Rate2, lpOldPatch->FMOp[i].Rate3, lpOldPatch->FMOp[i].Rate4);
+		swprintf(tWork, BUFSIZE, L"R1:%02d R2:%02d R3:%02d R4:%02d\r\n", lpOldPatch->FMOp[i].EG.Rate1, lpOldPatch->FMOp[i].EG.Rate2, lpOldPatch->FMOp[i].EG.Rate3, lpOldPatch->FMOp[i].EG.Rate4);
 		ConsoleOut(tWork);
 
 		ConsoleOut(TEXT("\r\n"));
@@ -119,10 +119,10 @@ void DisplaySingleVoice(UCHAR *readBuffer)
 
 		//envelope
 		swprintf(tWork, BUFSIZE, L"L1:%02d L2:%02d L3:%02d L4:%02d\r\n", 
-			lpSingleOldPatch->FMOp[i].Level1, lpSingleOldPatch->FMOp[i].Level2, lpSingleOldPatch->FMOp[i].Level3, lpSingleOldPatch->FMOp[i].Level4);
+			lpSingleOldPatch->FMOp[i].EG.Level1, lpSingleOldPatch->FMOp[i].EG.Level2, lpSingleOldPatch->FMOp[i].EG.Level3, lpSingleOldPatch->FMOp[i].EG.Level4);
 		ConsoleOut(tWork);
 		swprintf(tWork, BUFSIZE, L"R1:%02d R2:%02d R3:%02d R4:%02d\r\n", 
-			lpSingleOldPatch->FMOp[i].Rate1, lpSingleOldPatch->FMOp[i].Rate2, lpSingleOldPatch->FMOp[i].Rate3, lpSingleOldPatch->FMOp[i].Rate4);
+			lpSingleOldPatch->FMOp[i].EG.Rate1, lpSingleOldPatch->FMOp[i].EG.Rate2, lpSingleOldPatch->FMOp[i].EG.Rate3, lpSingleOldPatch->FMOp[i].EG.Rate4);
 		ConsoleOut(tWork);
 
 		ConsoleOut(TEXT("\r\n"));
