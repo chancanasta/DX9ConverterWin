@@ -484,7 +484,6 @@ void SingleAlgorithmConvert(lpFM_SINGLE_NEW_PATCH lpNewPatch, lpFM_SINGLE_OLD_PA
 	lpOldPatch->Alogrithm.OscSync = 1;
 }
 
-<<<<<<< HEAD
 /*
 New 4op LFOs =
 TX81z
@@ -512,8 +511,6 @@ DX9
 ->LFO speed maps closely to DX21/27/100 but vary significantly at lower settings for TX81z/DX11
 */
 
-=======
->>>>>>> da40cfa1e9286de8fa3f0b4428e942ed5813aa8a
 void SingleLFOConvert(lpFM_SINGLE_NEW_PATCH lpNewPatch, lpFM_SINGLE_OLD_PATCH lpOldPatch)
 {
 	lpOldPatch->Lfo.LFOSpeed = lpNewPatch->LFOParams.LFOSpeed;
