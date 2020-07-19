@@ -29,7 +29,7 @@ void AlgorithmConvert(lpFM_BULK_NEW_PATCH lpNewPatch, lpFM_BULK_OLD_PATCH lpOldP
 void LFOConvert(lpFM_BULK_NEW_PATCH lpNewPatch, lpFM_BULK_OLD_PATCH lpOldPatch);
 void SingleLFOConvert(lpFM_SINGLE_NEW_PATCH lpNewPatch, lpFM_SINGLE_OLD_PATCH lpOldPatch);
 //default out all the easy stuff in the patch
-void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch, int PatchNo);
+void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch, int PatchNo, char *dispName, BOOL oldName);
 void SetSingleDefaults(lpFM_SINGLE_OLD_PATCH lpOldPatch);
 //the checksum
 UCHAR CalcChecksum(UCHAR *writeBuffer, int startPos, int dataLen);

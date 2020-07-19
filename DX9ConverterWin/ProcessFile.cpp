@@ -7,8 +7,7 @@
 #include "FMConversion.h"
 #include "ProcessFile.h"
 #include "DXDisplay.h"
-#include <Shlwapi.h>
-#include <math.h> 
+
 #include <stdio.h>
 OVERLAPPED ol = { 0 };
 TCHAR genOut[BUFSIZE];
@@ -469,7 +468,7 @@ void AlgorithmConvert(lpFM_BULK_NEW_PATCH lpNewPatch, lpFM_BULK_OLD_PATCH lpOldP
 	//algorithm is in bottom 3 bits
 	lpOldPatch->Algorithm.Algorithm = MAPALGO[(lpNewPatch->LFOParams.SyncFBackAlgo & 0x07)];
 //there is an LFO sync in the 'new' 4ops, which is not on the DX9
-//also there is a OSC sync on the DX9 which is no present in the newer 4ops
+//also there is a OSC sync on the DX9 which is not present in the newer 4ops
 //so default the OSC sync to on or off ?
 	outByte = OSC_BULK_SYNC_ON;
 	//add the feedback (value in bits 5,4,3 move to 2,1,0)
@@ -484,7 +483,6 @@ void SingleAlgorithmConvert(lpFM_SINGLE_NEW_PATCH lpNewPatch, lpFM_SINGLE_OLD_PA
 	lpOldPatch->Alogrithm.OscSync = 1;
 }
 
-<<<<<<< HEAD
 /*
 New 4op LFOs =
 TX81z
@@ -509,11 +507,9 @@ DX9
 00.06Hz (16 seconds for 1 cycle)
 47.2Hz  (47 cycles a second)
 
-->LFO speed maps closely to DX21/27/100 but vary significantly at lower settings for TX81z/DX11
+->LFO speed maps closely to DX21/27/100 but var significantly at lower settings for TX81z/DX11
 */
 
-=======
->>>>>>> da40cfa1e9286de8fa3f0b4428e942ed5813aa8a
 void SingleLFOConvert(lpFM_SINGLE_NEW_PATCH lpNewPatch, lpFM_SINGLE_OLD_PATCH lpOldPatch)
 {
 	lpOldPatch->Lfo.LFOSpeed = lpNewPatch->LFOParams.LFOSpeed;
@@ -562,9 +558,9 @@ void LFOConvert(lpFM_BULK_NEW_PATCH lpNewPatch, lpFM_BULK_OLD_PATCH lpOldPatch)
 }
 
 //default out all the unused parameters in the patch
-void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch,int PatchNo)
+void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch,int PatchNo,char *dispName,BOOL oldName)
 {
-	char dispName[16];
+	
 	
 //set the 2 unnused operators in the DX9 structure to 0's
 	memset(&lpOldPatch->FMOp[4], 0, sizeof(FM_BULK_OPERATOR_OLD)*2);
@@ -580,7 +576,8 @@ void SetDefaults(lpFM_BULK_OLD_PATCH lpOldPatch,int PatchNo)
 	lpOldPatch->PitchEnvelope.Rate4 = PEG_RATE;
 //set the DX9 name, 
 //be lazy and pad more than the length of the string, then just copy over the first 10 chars so we don't get the NULL
-	sprintf_s(dispName,16, "DX9.%*d     ", 2,PatchNo+1);
+	if(oldName)
+		sprintf_s(dispName,12, "DX9.%*d     ", 2,PatchNo+1);
 	memcpy(lpOldPatch->PatchName, dispName, 10);
 	return;
 }
@@ -638,7 +635,7 @@ BOOL ConvertVoice(lpFM_BULK_NEW_PATCH lpNewPatch,int PatchNo,lpFM_BULK_OLD_PATCH
 
 //Now convert to the DX9
 //set the easy stuff
-	SetDefaults(lpOldPatch,PatchNo);
+	SetDefaults(lpOldPatch,PatchNo,dispName,TRUE);
 //Algorithm
 	AlgorithmConvert(lpNewPatch, lpOldPatch);
 //convert the operators
