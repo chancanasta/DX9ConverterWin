@@ -1,2 +1,2 @@
 # DX9ConverterWin
-Converts other Yamaha 4 Operator DX patch sysex files to DX9 format
+Win32 app that converts pathces from the later Yamaha 4 Op Synths (DX100, Dx21, DX27, DX11 and TX81Z) to the DX9
